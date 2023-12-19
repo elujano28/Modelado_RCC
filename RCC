@@ -1,0 +1,279 @@
+---
+title: Modelado de la resistencia a la compresión del concreto mediante el uso de
+  regresion lineal múltiple
+author: "Efrain Lujano"
+date: "5/27/2022"
+output:
+  word_document: default
+  pdf_document: default
+  html_document: default
+bibliography: Referencias_bibliograficas.bib
+csl: apa.csl
+---
+
+# Conjunto de datos
+
+La resistencia del concreto está influenciado no solo por la relación agua-cemento, sino también por la concentración de otros ingredientes en el concreto [@yeh1998modeling].
+
+El conjunto de datos utilizados, fueron obtenidos del respositorio de aprendizaje automatico (UCI Machine Learning, <https://archive.ics.uci.edu/ml/datasets/Concrete+Slump+Test>). El conjunto de datos incluye 103 puntos de datos. Hay 7 variables de entrada (Cemento, escoria, cenizas volantes, agua, superplastificante, agregado grueso y agregado fino) y 3 variables de salida (SLUMP en cm, FLOW en cm y la resistencia a la compresión del concreto (RCC) a los 28 días en Mpa). Cabe indicar que en este estudio se utilizó como variable de salida solamente la RCC (Tabla 1).
+
+
+**Tabla 1.** Conjunto de datos
+
+|**Nombre de la variable** | **Tipo de dato** | **Medida** | **Descripción** |
+|------------------------------|---------|-------|------------|
+| Cemento (componente 1) (CMT) | Cuantitativo | kg/m^3^ | Variable de entrada |
+| Escoria (componente 2) (ESC) | Cuantitativo | kg/m^3^  | Variable de entrada|
+|Cenizas volantes (componente 3) (CZV) | cuantitativa | kg/m^3^|Variable de entrada|
+|Agua (componente 4) | cuantitativa | kg/m^3^| Variable de entrada|
+|Superplastificante (componente 5) (SP) | cuantitativa | kg/m^3^ | Variable de entrada|
+|Agregado grueso (componente 6) (AG)| cuantitativo | kg/m^3^| Variable de entrada|
+|Agregado fino (componente 7) (AF)| cuantitativo | kg/m^3^| Variable de entrada|
+|Resistencia a la compresión del concreto (RCC| cuantitativa | MPa | Variable de salida|
+
+```{r}
+df <- read.csv("E:/UNAP/Estadistica_General/Estadistica/Datos/Data_UCI_ML.csv", sep = ",")
+head(df)
+```
+
+## Medidas de tendencia central o medidas de posición
+
+"Son medidas de posición que tratan de establecer un valor que pueda considerarse el centro de los datos en algún sentido" (Sáez, 2012, p. 25).
+
+
+### Media
+
+Es una medida que corresponde al centro de gravedad de los datos (Sáez, 2012). Para calcular la media de la resitencia utilizamos la funcion 'mean'
+
+```{r}
+mean(df$RCC)
+round(apply(df[,2:9], 2, mean), 1)
+```
+
+### Mediana
+
+```{r}
+#median(df$RCC)
+round(apply(df[,2:9], 2, median), 1)
+```
+
+### La moda
+
+Para calcular la moda, es necesario instalar el paquete *modeest*
+
+```{r}
+#install.packages("modeest")
+library(modeest)
+
+mfv(df$RCC)
+```
+
+### Cuantiles
+
+Utilizamos la funcion **quantile**
+
+#### Cuartiles
+
+```{r}
+cuartiles <- quantile(df$RCC)
+#cuartiles <-round(apply(df[,2:9], 2, quantile), 1)
+cuartiles
+```
+El Q1, Q2 y Q3 de la resistencia a la compresion del concreto es de 30.9, 35.52 y 41.21 MPa respectivamente, lo que indica que el 25 % de los valores son inferiores o iguales a 30.90 MPa y al menos el 75 % de valores son menores o iguales que 41.21 MPa.
+
+Tambien es posible realizar el calculo de los cuartiles mediante:
+
+```{r}
+cuartiles <- quantile(df$RCC, probs = seq(0,1, 0.25), na.rm = TRUE)
+cuartiles
+```
+
+#### Quintiles
+
+```{r}
+quintiles <- quantile(df$RCC, probs = seq(0,1, 1/5), na.rm = TRUE)
+quintiles
+```
+
+#### Deciles
+
+```{r}
+deciles <- quantile(df$RCC, probs = seq(0,1, 1/10), na.rm = TRUE)
+deciles
+```
+
+#### Percentiles
+
+```{r}
+percentiles <- quantile(df$RCC, probs = seq(0,1, 1/100), na.rm = TRUE)
+percentiles
+```
+
+El 75 % de la resistencia a la compresión del concreto (RCC)  es de 41.2 MPa o menos.
+
+## Medidas de dispersión o de variación
+
+#### Varianza muestral
+
+```{r}
+S2 <- var(df$RCC)
+S2
+```
+
+#### Desviación típica o estándar muestral
+La desviación estándar es utilizada para cuantificar el límite de dispersión o intervalo de confianza [@cervantes2008media].
+
+```{r}
+s <- sd(df$RCC)
+s
+```
+La desviación estandar de la RCC es de 7.84 MPa. Según la regla empírica, el 100 % de los datos de la RCC se encuentran dentro del promedio + 3 x desviación estandar y promedio - 3 x desviación estandar con valores de 12.52 MPa y 59.56 MPa respectivamente. En consecuencia, el valor máximo y mínimo de la RCC fue de 58.53 y 17.19 MPa respectivamente.
+
+#### Coeficiente de variación
+
+
+```{r}
+CV <- sd(df$RCC)/abs(mean(df$RCC))
+CV
+```
+El CV de la RCC es de 21.7 % (0.217), lo que indica que son relativamente homogeneos. Por lo tanto, el promedio es representativo.
+
+Tambien podemos crear una funcion **CVar** para calcular el CV
+
+```{r}
+CVar <- function(x){
+  y <- sd(x)/abs(mean(x))
+  return(y)
+}
+```
+
+```{r}
+CV2 <- CVar(df$RCC)
+CV2
+```
+#### Rango estadístico
+
+Los valores  minimos y maximos de una muestra de datos, pueden calcularse con la funcion **range**. En el caso de tener valores faltantes adicionar el argumento **na.rm = TRUE**
+
+```{r}
+rango <- range(df$RCC)
+rango
+```
+Los valores maximos y minimos tambien pueden obtenerse con la funcion **max** y **min** respectivamente
+
+```{r}
+minimo <- min(df$RCC)
+minimo
+```
+
+```{r}
+maximo <- max(df$RCC)
+maximo
+```
+Para conocer el rango estadistico, realizamos una resta del valor maximo y minimo
+
+```{r}
+rango_estadistico <- max(df$RCC) - min(df$RCC)
+rango_estadistico
+```
+El rango estadistico de la RCC es de 41.3 MPa, siendo el valor minimo 17.2 MPa y el maximo 58.5 MPa.
+
+#### Rango intercuartil
+
+Calculamos el rango intercuartil (IQR) con la funcion **IQR**
+
+```{r}
+IQR <- IQR(df$RCC)
+IQR
+```
+El IQR de la RCC es de 10.3 MPa.
+
+## Medidas de forma
+
+#### Coeficiente de asimetría
+
+Para calcular el coeficiente de asimetria, es necesario instalar el paquete **e1071**
+
+```{r}
+#install.packages("e1071")
+library(e1071)
+```
+
+```{r}
+asimetria <- skewness(df$RCC)
+asimetria
+```
+Los datos de la RCC tienen una asimetría igual de 0.19 lo que significa una asimetria positiva o asimetria a hacia la derecha.
+
+#### Coeficiente de curtosis
+
+Para calcular el coeficiente de curtosis, utilizaremos tambien el paquete **e1071**
+
+```{r}
+curtosis <- kurtosis(df$RCC, na.rm = TRUE)
+curtosis
+```
+El coeficiente de curtosis para los datos de RCC es igual a 0.07 lo que significa que es una leptocúrtica.
+
+## Métodos para detectar datos atípicos o fuera de rango
+
+### Método de la regla empírica
+
+Límite de valores atípicos altos (LVAA)
+
+```{r}
+LVAA <- mean(df$RCC) + 3*sd(df$RCC)
+LVAA
+```
+Límite de valores atípicos bajos (LVAB)
+
+```{r}
+LVAB <- mean(df$RCC) - 3*sd(df$RCC)
+LVAB
+```
+El valor maximo y minimo de los datos de RCC es de 58.5 y 17.2 MPa respectivamente. Sin embargo los LVAA y LVAB son 59.5 y 12.5 MPa, por lo tanto segun el metodo de la regla empírica no hay la existencia de valores atípicos.
+
+### Método de los percentiles
+Se consideran valores atípicos bajos aquellos que son inferiores a P25-1.5(IQR) o Q1-1.5(IQR) y valores atipicos altos aquellos que son superiores al P75+1.5(IQR) o Q3+1.5(IQR).
+
+```{r}
+P <- quantile(df$RCC, probs = seq(0,1, 1/100))
+P
+```
+Limite de valores atípicos altos (LVAA)
+
+```{r}
+LVAA <- P[76] + 1.5*IQR(df$RCC)
+LVAA
+```
+Limite de valores atípicos bajos (LVAB)
+
+```{r}
+LVAB <- P[76] - 1.5*IQR(df$RCC)
+LVAB
+```
+
+## Métodos gráficos para describir datos cuantitativos
+
+### Diagrama de barras
+
+```{r}
+barplot(df$RCC)
+```
+
+### Histogramas
+
+```{r}
+hist(df$RCC, xlab = "Intervalo - RCC", main = "Histograma de frecuencia")
+```
+
+### Diagrama de cajas
+
+````{r}
+boxplot(df$RCC, col = "yellow" )
+```
+### Resumen estadistico
+
+```{r}
+summary(df)
+```
