@@ -277,3 +277,100 @@ boxplot(df$RCC, col = "yellow" )
 ```{r}
 summary(df)
 ```
+
+### Prueba de normalidad
+
+Para verificar si una muestra proviene de la poblacion con distribucion normal, podemos utilizar los histogramas de frecuencia y densidad, graficos cuantil cuantil (QQplot) y pruebas de hipótesis.
+
+#### Histograma de frecuencia y densidad
+
+```{r}
+{hist(df$RCC, freq = FALSE, nclass = 20)
+points(df$RCC, dnorm(df$RCC, mean(df$RCC), sd(df$RCC)))}
+```
+
+#### Grafico cuantil cuantil
+
+```{r}
+{qqnorm(df$RCC)
+qqline(df$RCC, col = "red")}
+```
+
+#### Pruebas de normalidad
+
+Hipotesis
+Ho : La muestra no proviene de una poblacion normal, valor p <= 0.05
+Ha : La muestra proviene de una poblacion normal, valor p > 0.05
+
+##### Prueba de normalidad de Shapiro - Wilk (SW)
+< 50 datos
+
+```{r}
+shapiro.test(df$RCC)
+```
+De acuerdo a la prueba de normalidad de SW el valor-p fue mayor al nivel de significancia 5 % (0.05), por lo tanto, podemos inferir que la muestra proviene de una poblacion con distribución normal.
+
+##### Prueba de normalidad de Lilliefors (Kolomogorov-Smirnov) (LKS)
+Se utiliza cuando los datos son mayores a 50
+
+```{r}
+#install.packages("nortest")
+library(nortest)
+lillie.test(df$RCC)
+```
+De acuerdo a la prueba de normalidad de LKS el valor-p fue mayor al nivel de significancia 5 % (0.05), por lo tanto, podemos inferir que la muestra proviene de una poblacion con distribución normal.
+
+
+### Coeficiente de correlacion de Pearson (r)
+
+#### Matriz de correlacion numérica
+```{r}
+M <- cor(df)
+M
+```
+
+#### Diagrama de dispersion
+
+```{r}
+pairs(df)
+```
+
+#### Matriz de correlación gráfica
+
+```{r}
+#install.packages("corrplot")
+#install.packages("RColorBrewer")
+library(corrplot)
+library(RColorBrewer)
+corrplot(M, method = "circle", type = "upper", col = brewer.pal(n=9, name = "YlGn"), tl.col = "black")
+```
+
+# Modelo de regresion lineal múltiple (MRLM)
+
+```{r}
+MRLM <- lm(formula = RCC ~ CMT + CZV + AGUA + AG + AF, data = df)
+MRLM
+
+summary(MRLM)
+```
+El 89.7 % de la variacion de la RCC es esplicada por las variables CMT, ESC, CZV, AGUA, SP, AG y AF. El resto 10.3 % se debe a errores en las mediciones u otras variables no consideradas en el experimento.
+
+```{r}
+plot(MRLM)
+```
+
+## Aplicando la ecuacion MRLM en los datos
+
+```{r}
+simulados <- predict(MRLM, data = c(df$CMT, df$ESC, df$CZV, df$AGUA, df$SP, df$AG, df$AF))
+head(simulados)
+```
+## Evaluacion cualitativa mediante un grafico de comparacion entre datos observados y simulados
+
+```{r}
+{plot(simulados, type = "l", col="red")
+lines(df$RCC, type = "l")}
+```
+
+
+# Referencias bibliográficas
